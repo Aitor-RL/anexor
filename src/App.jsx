@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Header from './components/Header.jsx';
 import DataImport from './components/DataImport.jsx';
 import HousingTable from './components/HousingTable.jsx';
+import Anexo3Section from './components/Anexo3Section.jsx';
 import PdfModal from './components/PdfModal.jsx';
-import { FileArchive, CheckCircle, AlertCircle, Building, Loader2 } from 'lucide-react';
+import { FileArchive, CheckCircle, AlertCircle, Building, Loader2, FileSpreadsheet, Building2, Layers } from 'lucide-react';
 import { parseRows } from './services/dataParser.js';
-import { sampleRows } from './services/mockData.js';
 import { generateAnexoPdf } from './services/pdfService.js';
 import { generateZipBundle } from './services/zipService.js';
 
@@ -16,6 +16,7 @@ export default function App() {
   const [generatingZip, setGeneratingZip] = useState(false);
   const [previewPdf, setPreviewPdf] = useState(null);
   const [sourceName, setSourceName] = useState('');
+  const [activeTab, setActiveTab] = useState('anexo2'); // 'anexo2' | 'anexo3'
 
   // Configuración de firma
   const [options, setOptions] = useState({
@@ -52,7 +53,7 @@ export default function App() {
     }
   };
 
-  // Previsualizar PDF en modal
+  // Previsualizar PDF individual de Anexo II
   const handlePreviewPdf = async (housing) => {
     setLoading(true);
     try {
@@ -118,73 +119,114 @@ export default function App() {
   const incompletos = housings.filter(h => h.statusType !== 'ready').length;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col pb-24">
+    <div className="min-h-screen bg-slate-50 flex flex-col pb-28">
       <Header options={options} onOptionsChange={setOptions} />
 
       <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 flex-1">
         <DataImport onDataLoaded={handleDataLoaded} loading={loading} />
 
-        {/* Si hay datos cargados, mostrar barra de estado y tarjetas de resumen */}
+        {/* Si hay datos cargados, mostrar barra de estado y pestañas de selección de documento */}
         {housings.length > 0 && (
           <>
-            <div className="flex items-center justify-between mb-4 bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 bg-white px-4 py-3 rounded-2xl border border-slate-200 shadow-sm">
               <div className="flex items-center gap-2 text-xs">
-                <span className="font-semibold text-slate-700">Fuente:</span>
-                <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-medium">{sourceName}</span>
+                <span className="font-semibold text-slate-500 uppercase tracking-wider text-[11px]">Hoja activa:</span>
+                <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 font-semibold border border-blue-100">{sourceName}</span>
               </div>
+
+              {/* Selector de Modo Anexo II / Anexo III */}
+              <div className="flex items-center p-1 bg-slate-100 rounded-xl">
+                <button
+                  onClick={() => setActiveTab('anexo2')}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition ${
+                    activeTab === 'anexo2'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Layers className="w-4 h-4" />
+                  <span>📑 Anexos II (Por Vivienda)</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('anexo3')}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition ${
+                    activeTab === 'anexo3'
+                      ? 'bg-white text-indigo-600 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Building2 className="w-4 h-4" />
+                  <span>🏛️ Anexo III (Certificado Edificio)</span>
+                </button>
+              </div>
+
               <button
                 onClick={handleClearData}
-                className="text-xs text-red-600 hover:text-red-700 font-medium hover:underline flex items-center gap-1"
+                className="text-xs text-red-600 hover:text-red-700 font-medium hover:underline flex items-center gap-1 self-end sm:self-auto"
               >
-                Limpiar datos / Subir otra hoja
+                Limpiar datos
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                  <Building className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-slate-900">{totalViviendas}</div>
-                  <div className="text-xs text-slate-500 font-medium">Viviendas / Inmuebles</div>
-                </div>
-              </div>
+            {/* SECCIÓN ANEXO II */}
+            {activeTab === 'anexo2' && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3.5">
+                    <div className="w-11 h-11 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                      <Building className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-slate-900">{totalViviendas}</div>
+                      <div className="text-xs text-slate-500 font-medium">Viviendas / Inmuebles</div>
+                    </div>
+                  </div>
 
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-                  <CheckCircle className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-emerald-600">{listos}</div>
-                  <div className="text-xs text-slate-500 font-medium">Listas para Anexo (100%)</div>
-                </div>
-              </div>
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3.5">
+                    <div className="w-11 h-11 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                      <CheckCircle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-emerald-600">{listos}</div>
+                      <div className="text-xs text-slate-500 font-medium">Listas para Anexo (100%)</div>
+                    </div>
+                  </div>
 
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-                  <AlertCircle className="w-5 h-5" />
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3.5">
+                    <div className="w-11 h-11 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                      <AlertCircle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-amber-600">{incompletos}</div>
+                      <div className="text-xs text-slate-500 font-medium">Incompletas / Pendientes</div>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-amber-600">{incompletos}</div>
-                  <div className="text-xs text-slate-500 font-medium">Incompletas / Pendientes</div>
-                </div>
-              </div>
-            </div>
+
+                <HousingTable
+                  housings={housings}
+                  selectedIds={selectedIds}
+                  onToggleSelect={handleToggleSelect}
+                  onSelectAll={handleSelectAll}
+                  onPreviewPdf={handlePreviewPdf}
+                  onDownloadSinglePdf={handleDownloadSinglePdf}
+                />
+              </>
+            )}
+
+            {/* SECCIÓN ANEXO III */}
+            {activeTab === 'anexo3' && (
+              <Anexo3Section
+                housings={housings}
+                options={options}
+                onPreviewPdf={setPreviewPdf}
+              />
+            )}
           </>
         )}
 
-        {/* Tabla de comprobación */}
-        {housings.length > 0 ? (
-          <HousingTable
-            housings={housings}
-            selectedIds={selectedIds}
-            onToggleSelect={handleToggleSelect}
-            onSelectAll={handleSelectAll}
-            onPreviewPdf={handlePreviewPdf}
-            onDownloadSinglePdf={handleDownloadSinglePdf}
-          />
-        ) : (
+        {/* Estado Vacío */}
+        {housings.length === 0 && (
           <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center">
             <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
               <Building className="w-6 h-6" />
@@ -197,13 +239,13 @@ export default function App() {
         )}
       </main>
 
-      {/* Barra de acción inferior flotante */}
-      {housings.length > 0 && (
+      {/* Barra de acción inferior flotante (Solo visible en Modo Anexo II) */}
+      {housings.length > 0 && activeTab === 'anexo2' && (
         <div className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 py-3.5 px-4 sm:px-6 z-40 shadow-lg">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-xs text-slate-600">
               <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-              <span><strong>{selectedIds.length}</strong> de <strong>{housings.length}</strong> Anexos seleccionados para generar</span>
+              <span><strong>{selectedIds.length}</strong> de <strong>{housings.length}</strong> Anexos II seleccionados para generar</span>
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -220,7 +262,7 @@ export default function App() {
                 ) : (
                   <>
                     <FileArchive className="w-4 h-4" />
-                    <span>Descargar ZIP con Anexos ({selectedIds.length})</span>
+                    <span>Descargar ZIP con Anexos II ({selectedIds.length})</span>
                   </>
                 )}
               </button>
@@ -229,7 +271,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Modal de previsualización */}
+      {/* Modal de previsualización (compatible con Anexo II y Anexo III) */}
       {previewPdf && (
         <PdfModal
           pdfUrl={previewPdf.url}
