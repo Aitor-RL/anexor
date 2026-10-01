@@ -1,4 +1,4 @@
-﻿import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, TextAlignment } from 'pdf-lib';
 
 let cachedAnexo3Bytes = null;
 
@@ -142,12 +142,30 @@ export async function generateAnexo3Pdf(housings = [], communityData = {}, optio
     pageComuneros.forEach((c, idx) => {
       const rowNum = idx + 1;
       try {
-        if (c.bloque) form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_G[0].Certifica[0].tblPersoas[0].Fila${rowNum}[0].txtBloque[0]`).setText(c.bloque);
-        if (c.piso) form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_G[0].Certifica[0].tblPersoas[0].Fila${rowNum}[0].txtPiso[0]`).setText(c.piso);
-        if (c.letra) form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_G[0].Certifica[0].tblPersoas[0].Fila${rowNum}[0].txtLetra[0]`).setText(c.letra);
-        if (c.nombre) form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_G[0].Certifica[0].tblPersoas[0].Fila${rowNum}[0].txtNome[0]`).setText(c.nombre);
-        if (c.dni) form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_G[0].Certifica[0].tblPersoas[0].Fila${rowNum}[0].txtNifCif[0]`).setText(c.dni);
-        if (c.cuotaFormatted) form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_G[0].Certifica[0].tblPersoas[0].Fila${rowNum}[0].txtCota[0]`).setText(c.cuotaFormatted);
+        if (c.bloque) {
+          const f = form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_G[0].Certifica[0].tblPersoas[0].Fila${rowNum}[0].txtBloque[0]`);
+          f.setFontSize(8.5); f.setAlignment(TextAlignment.Center); f.setText(c.bloque);
+        }
+        if (c.piso) {
+          const f = form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_G[0].Certifica[0].tblPersoas[0].Fila${rowNum}[0].txtPiso[0]`);
+          f.setFontSize(8.5); f.setAlignment(TextAlignment.Center); f.setText(c.piso);
+        }
+        if (c.letra) {
+          const f = form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_G[0].Certifica[0].tblPersoas[0].Fila${rowNum}[0].txtLetra[0]`);
+          f.setFontSize(8.5); f.setAlignment(TextAlignment.Center); f.setText(c.letra);
+        }
+        if (c.nombre) {
+          const f = form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_G[0].Certifica[0].tblPersoas[0].Fila${rowNum}[0].txtNome[0]`);
+          f.setFontSize(8.5); f.setText(c.nombre);
+        }
+        if (c.dni) {
+          const f = form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_G[0].Certifica[0].tblPersoas[0].Fila${rowNum}[0].txtNifCif[0]`);
+          f.setFontSize(8.5); f.setAlignment(TextAlignment.Center); f.setText(c.dni);
+        }
+        if (c.cuotaFormatted) {
+          const f = form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_G[0].Certifica[0].tblPersoas[0].Fila${rowNum}[0].txtCota[0]`);
+          f.setFontSize(8.5); f.setAlignment(TextAlignment.Center); f.setText(c.cuotaFormatted);
+        }
         subtotalCuotaB += (c.cuota || 0);
       } catch (err) {
         console.warn(`Error rellenando Fila ${rowNum} Tabla B:`, err);
@@ -156,7 +174,11 @@ export async function generateAnexo3Pdf(housings = [], communityData = {}, optio
 
     try {
       const txtTotalB = form.getTextField('ProcedimientoXunta[0].VI406F_AnexoIII_G[0].Certifica[0].tblPersoas[0].FilaTotal[0].txtTotal[0]');
-      if (txtTotalB) txtTotalB.setText(subtotalCuotaB.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+      if (txtTotalB) {
+        txtTotalB.setFontSize(8.5);
+        txtTotalB.setAlignment(TextAlignment.Center);
+        txtTotalB.setText(subtotalCuotaB.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+      }
     } catch (_) {}
 
     // 3. Tabla (c) Partícipes (Página 2)
@@ -169,16 +191,40 @@ export async function generateAnexo3Pdf(housings = [], communityData = {}, optio
     pageParticipes.forEach((p, idx) => {
       const rowNum = idx + 1;
       try {
-        if (p.refCatastral) form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_2_G[0].Certifica[0].Tabla1[0].Fila${rowNum}[0].txtReferenciaC[0]`).setText(p.refCatastral);
-        if (p.bloque) form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_2_G[0].Certifica[0].Tabla1[0].Fila${rowNum}[0].txtBloque[0]`).setText(p.bloque);
-        if (p.piso) form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_2_G[0].Certifica[0].Tabla1[0].Fila${rowNum}[0].txtPiso[0]`).setText(p.piso);
-        if (p.letra) form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_2_G[0].Certifica[0].Tabla1[0].Fila${rowNum}[0].txtLetra[0]`).setText(p.letra);
+        if (p.refCatastral) {
+          const f = form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_2_G[0].Certifica[0].Tabla1[0].Fila${rowNum}[0].txtReferenciaC[0]`);
+          f.setFontSize(7.5); f.setAlignment(TextAlignment.Center); f.setText(p.refCatastral);
+        }
+        if (p.bloque) {
+          const f = form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_2_G[0].Certifica[0].Tabla1[0].Fila${rowNum}[0].txtBloque[0]`);
+          f.setFontSize(8.5); f.setAlignment(TextAlignment.Center); f.setText(p.bloque);
+        }
+        if (p.piso) {
+          const f = form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_2_G[0].Certifica[0].Tabla1[0].Fila${rowNum}[0].txtPiso[0]`);
+          f.setFontSize(8.5); f.setAlignment(TextAlignment.Center); f.setText(p.piso);
+        }
+        if (p.letra) {
+          const f = form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_2_G[0].Certifica[0].Tabla1[0].Fila${rowNum}[0].txtLetra[0]`);
+          f.setFontSize(8.5); f.setAlignment(TextAlignment.Center); f.setText(p.letra);
+        }
 
-        if (p.nombre) form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_2_G[0].Certifica[0].Tabla2[0].Fila${rowNum}[0].txtNombreApellidos[0]`).setText(p.nombre);
-        if (p.dni) form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_2_G[0].Certifica[0].Tabla2[0].Fila${rowNum}[0].txtNifCif[0]`).setText(p.dni);
-        if (p.porcentajeFormatted) form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_2_G[0].Certifica[0].Tabla2[0].Fila${rowNum}[0].txtporcentaje[0]`).setText(p.porcentajeFormatted);
+        if (p.nombre) {
+          const f = form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_2_G[0].Certifica[0].Tabla2[0].Fila${rowNum}[0].txtNombreApellidos[0]`);
+          f.setFontSize(8.5); f.setText(p.nombre);
+        }
+        if (p.dni) {
+          const f = form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_2_G[0].Certifica[0].Tabla2[0].Fila${rowNum}[0].txtNifCif[0]`);
+          f.setFontSize(8.5); f.setAlignment(TextAlignment.Center); f.setText(p.dni);
+        }
+        if (p.porcentajeFormatted) {
+          const f = form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_2_G[0].Certifica[0].Tabla2[0].Fila${rowNum}[0].txtporcentaje[0]`);
+          f.setFontSize(8.5); f.setAlignment(TextAlignment.Center); f.setText(p.porcentajeFormatted);
+        }
 
-        if (p.cuotaAyudaFormatted) form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_2_G[0].Certifica[0].Tabla3[0].Fila${rowNum}[0].txtCuota[0]`).setText(p.cuotaAyudaFormatted);
+        if (p.cuotaAyudaFormatted) {
+          const f = form.getTextField(`ProcedimientoXunta[0].VI406F_AnexoIII_2_G[0].Certifica[0].Tabla3[0].Fila${rowNum}[0].txtCuota[0]`);
+          f.setFontSize(8.5); f.setAlignment(TextAlignment.Center); f.setText(p.cuotaAyudaFormatted);
+        }
 
         subtotalPorcentajeC += (p.porcentajePresupuesto || 0);
         subtotalCuotaAyudaC += (p.porcentajePresupuesto || 0);

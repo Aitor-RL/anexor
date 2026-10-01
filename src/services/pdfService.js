@@ -1,4 +1,4 @@
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, TextAlignment } from 'pdf-lib';
 
 let cachedTemplateBytes = null;
 
@@ -67,19 +67,29 @@ export async function generateAnexoPdf(housing, options = {}) {
 
     try {
       if (prop.nombre && map.nombre) {
-        form.getTextField(map.nombre).setText(prop.nombre);
+        const nombreField = form.getTextField(map.nombre);
+        nombreField.setFontSize(8);
+        nombreField.setText(prop.nombre);
       }
       if (prop.dni && map.dni) {
-        form.getTextField(map.dni).setText(prop.dni);
+        const dniField = form.getTextField(map.dni);
+        dniField.setFontSize(6.8);
+        dniField.setAlignment(TextAlignment.Center);
+        dniField.setText(prop.dni);
       }
       if (prop.esMenor && map.menor) {
         try { form.getCheckBox(map.menor).check(); } catch (_) {}
       }
       if (prop.tutorNombre && map.tutorNombre) {
-        form.getTextField(map.tutorNombre).setText(prop.tutorNombre);
+        const tutorNombreField = form.getTextField(map.tutorNombre);
+        tutorNombreField.setFontSize(8);
+        tutorNombreField.setText(prop.tutorNombre);
       }
       if (prop.tutorDni && map.tutorDni) {
-        form.getTextField(map.tutorDni).setText(prop.tutorDni);
+        const tutorDniField = form.getTextField(map.tutorDni);
+        tutorDniField.setFontSize(6.8);
+        tutorDniField.setAlignment(TextAlignment.Center);
+        tutorDniField.setText(prop.tutorDni);
       }
 
       // Vulnerabilidad: '1' es SÍ, '2' es NO
