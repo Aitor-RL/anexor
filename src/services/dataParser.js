@@ -7,7 +7,7 @@ export function normalizeKey(str) {
     .replace(/[^a-z0-9]/g, '');
 }
 
-export function parseRows(rawRows) {
+export function parseRows(rawRows, extractedImages = null) {
   if (!Array.isArray(rawRows)) return [];
 
   // Mapear cada fila con claves normalizadas
@@ -48,7 +48,7 @@ export function parseRows(rawRows) {
     const discapacidad = discapacidadStr === 'SI' || discapacidadStr === 'SÍ';
     const tutorNombre = String(row['tutornombre'] ?? row['tutor'] ?? '').trim();
     const tutorDni = String(row['tutordni'] ?? row['niftutor'] ?? '').trim().toUpperCase();
-    const anversoDni = String(
+    let anversoDni = String(
       row['anversodni'] ??
       row['dnianverso'] ??
       row['anverso'] ??
@@ -60,6 +60,19 @@ export function parseRows(rawRows) {
       row['urldnianverso'] ??
       ''
     ).trim();
+
+    // Si no había enlace de texto pero se extrajeron imágenes del archivo Excel (.xlsx):
+    if (!anversoDni && extractedImages) {
+      const extracted = (
+        extractedImages.rowMap[idx + 1] ||
+        extractedImages.rowMap[idx] ||
+        extractedImages.allImages[idx] ||
+        ''
+      );
+      if (extracted) {
+        anversoDni = extracted;
+      }
+    }
     const nota = String(row['nota'] ?? '').trim();
 
     if (!housingMap.has(housingKey)) {

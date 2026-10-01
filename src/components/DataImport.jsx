@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { UploadCloud, PlayCircle, Link2, AlertCircle, ClipboardCopy, FileSpreadsheet, Check } from 'lucide-react';
+import { UploadCloud, PlayCircle, Link2, AlertCircle, ClipboardCopy, FileSpreadsheet, Check, Sparkles, X, ChevronRight, Layers, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { parseRows } from '../services/dataParser.js';
 import { sampleRows } from '../services/mockData.js';
+import { extractImagesFromXlsx } from '../services/excelImageExtractor.js';
 
 export default function DataImport({ onDataLoaded, loading }) {
   const [activeTab, setActiveTab] = useState('file'); // 'file' | 'paste' | 'sheets'
@@ -10,44 +11,107 @@ export default function DataImport({ onDataLoaded, loading }) {
   const [pastedText, setPastedText] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [fetchingSheets, setFetchingSheets] = useState(false);
+  const [processingFile, setProcessingFile] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState('');
+  const [pendingWorkbook, setPendingWorkbook] = useState(null); // { workbook, sourceName, extractedImages, sheetsInfo }
   const fileInputRef = useRef(null);
 
-  const processWorkbook = (workbook, sourceName) => {
+  const processSheet = (workbook, sheetName, sourceName, extractedImages = null) => {
     try {
-      const firstSheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[firstSheetName];
+      const worksheet = workbook.Sheets[sheetName];
+      if (!worksheet) {
+        throw new Error(`La hoja "${sheetName}" no existe en el libro.`);
+      }
+
       const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
 
       if (rawRows.length === 0) {
-        throw new Error('La hoja está vacía o no contiene filas con datos legibles.');
+        throw new Error(`La hoja "${sheetName}" está vacía o no contiene filas con datos legibles.`);
       }
 
-      const housings = parseRows(rawRows);
+      const housings = parseRows(rawRows, extractedImages);
       if (housings.length === 0) {
-        throw new Error('No se detectaron viviendas o copropietarios en el documento.');
+        throw new Error(`No se detectaron viviendas o copropietarios en la hoja "${sheetName}". Comprueba las columnas.`);
       }
 
-      onDataLoaded(housings, sourceName);
+      onDataLoaded(housings, `${sourceName} [${sheetName}]`);
       setErrorMsg('');
+      setPendingWorkbook(null);
     } catch (err) {
       setErrorMsg('Error al procesar los datos: ' + err.message);
+    } finally {
+      setProcessingFile(false);
+    }
+  };
+
+  const handleWorkbookLoaded = (workbook, sourceName, extractedImages = null) => {
+    try {
+      const sheetNames = workbook.SheetNames || [];
+      if (sheetNames.length === 0) {
+        throw new Error('El archivo Excel no contiene ninguna hoja válida.');
+      }
+
+      // Si tiene más de una hoja, mostramos el modal para que el usuario elija
+      if (sheetNames.length > 1) {
+        const sheetsInfo = sheetNames.map(name => {
+          const ws = workbook.Sheets[name];
+          const rowCount = ws ? (XLSX.utils.sheet_to_json(ws, { defval: '' }).length) : 0;
+          return { name, rowCount };
+        });
+
+        setPendingWorkbook({
+          workbook,
+          sourceName,
+          extractedImages,
+          sheetsInfo
+        });
+        setProcessingFile(false);
+      } else {
+        // Si solo tiene 1 hoja, la procesamos directamente
+        processSheet(workbook, sheetNames[0], sourceName, extractedImages);
+      }
+    } catch (err) {
+      setErrorMsg('Error al inspeccionar las hojas del archivo: ' + err.message);
+      setProcessingFile(false);
     }
   };
 
   const handleFileUpload = (file) => {
     if (!file) return;
     setErrorMsg('');
+    setProcessingFile(true);
+    setProcessingStatus('Leyendo archivo Excel...');
+
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
+        setProcessingStatus('Analizando estructura del libro...');
         const buffer = new Uint8Array(e.target.result);
         const workbook = XLSX.read(buffer, { type: 'array' });
-        processWorkbook(workbook, file.name);
+
+        // Extraer imágenes incrustadas dentro de las celdas del XLSX
+        let extractedImages = null;
+        if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
+          try {
+            extractedImages = await extractImagesFromXlsx(e.target.result, (msg) => {
+              setProcessingStatus(msg);
+            });
+          } catch (imgErr) {
+            console.warn('No se pudieron extraer imágenes del XLSX:', imgErr);
+          }
+        }
+
+        setProcessingStatus('Organizando datos de viviendas...');
+        handleWorkbookLoaded(workbook, file.name, extractedImages);
       } catch (err) {
         setErrorMsg('Error al leer el archivo: ' + err.message);
+        setProcessingFile(false);
       }
     };
-    reader.onerror = () => setErrorMsg('Error al abrir el archivo seleccionado.');
+    reader.onerror = () => {
+      setErrorMsg('Error al abrir el archivo seleccionado.');
+      setProcessingFile(false);
+    };
     reader.readAsArrayBuffer(file);
   };
 
@@ -57,12 +121,15 @@ export default function DataImport({ onDataLoaded, loading }) {
       return;
     }
     setErrorMsg('');
+    setProcessingFile(true);
+    setProcessingStatus('Procesando celdas pegadas...');
     try {
       // XLSX puede leer texto TSV (copiado con Ctrl+C de Google Sheets/Excel)
       const workbook = XLSX.read(pastedText.trim(), { type: 'string' });
-      processWorkbook(workbook, 'Celdas copiadas');
+      handleWorkbookLoaded(workbook, 'Celdas copiadas');
     } catch (err) {
       setErrorMsg('No se pudieron interpretar las celdas pegadas: ' + err.message);
+      setProcessingFile(false);
     }
   };
 
@@ -71,6 +138,8 @@ export default function DataImport({ onDataLoaded, loading }) {
     if (!rawUrl) return;
     setErrorMsg('');
     setFetchingSheets(true);
+    setProcessingFile(true);
+    setProcessingStatus('Conectando con Google Sheets...');
 
     try {
       let exportUrl = rawUrl;
@@ -80,7 +149,8 @@ export default function DataImport({ onDataLoaded, loading }) {
       const idMatch = rawUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
       if (idMatch && !rawUrl.includes('/pub?')) {
         const sheetId = idMatch[1];
-        exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+        // Exportar como XLSX para traer las fotos incrustadas en celdas
+        exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
       }
 
       let response;
@@ -88,7 +158,7 @@ export default function DataImport({ onDataLoaded, loading }) {
         // Intento directo
         response = await fetch(exportUrl);
       } catch (directErr) {
-        // Si falla por CORS directo, intentar con proxy de lectura CORS
+        // Si falla por CORS directo, intentar con proxy CORS
         const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(exportUrl);
         response = await fetch(proxyUrl);
       }
@@ -97,18 +167,28 @@ export default function DataImport({ onDataLoaded, loading }) {
         throw new Error('Google bloqueó el acceso directo. Asegúrate de que el documento esté compartido como "Cualquiera con el enlace puede ver".');
       }
 
-      const csvData = await response.text();
-      if (!csvData || csvData.trim().startsWith('<!DOCTYPE html>')) {
-        throw new Error('Google devolvió una página de acceso o inicio de sesión en lugar del archivo CSV.');
+      setProcessingStatus('Descargando archivo con fotos...');
+      const arrayBuffer = await response.arrayBuffer();
+      const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+
+      // Extraer imágenes incrustadas dentro del XLSX de Google Sheets
+      let extractedImages = null;
+      try {
+        extractedImages = await extractImagesFromXlsx(arrayBuffer, (msg) => {
+          setProcessingStatus(msg);
+        });
+      } catch (imgErr) {
+        console.warn('No se pudieron extraer imágenes desde Google Sheets:', imgErr);
       }
 
-      const workbook = XLSX.read(csvData, { type: 'string' });
-      processWorkbook(workbook, 'Google Sheets');
+      setProcessingStatus('Procesando viviendas...');
+      handleWorkbookLoaded(workbook, 'Google Sheets', extractedImages);
     } catch (err) {
       setErrorMsg(
         'No se pudo descargar automáticamente desde el enlace de Google Sheets debido a las restricciones de privacidad de Google (CORS). ' +
-        'Recomendación: abre tu Google Sheet, selecciona las filas (Ctrl+A o con el ratón), pulsa Ctrl+C y pégalas directamente en la pestaña "📋 Copiar y Pegar".'
+        'Solución recomendada: en Google Sheets pulsa "Archivo > Descargar > Microsoft Excel (.xlsx)" y súbelo en la pestaña "Subir Archivo (.xlsx)". ¡Así las fotos se importan automáticamente!'
       );
+      setProcessingFile(false);
     } finally {
       setFetchingSheets(false);
     }
@@ -179,26 +259,59 @@ export default function DataImport({ onDataLoaded, loading }) {
       {/* Pestaña 1: Subir Archivo Excel o CSV */}
       {activeTab === 'file' && (
         <div
-          onClick={() => fileInputRef.current?.click()}
-          className="border-2 border-dashed border-slate-200 hover:border-blue-500 rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition bg-slate-50/50 hover:bg-blue-50/20 group"
+          onClick={() => !processingFile && fileInputRef.current?.click()}
+          className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center transition ${
+            processingFile
+              ? 'border-blue-400 bg-blue-50/40 cursor-wait'
+              : 'border-slate-200 hover:border-blue-500 cursor-pointer bg-slate-50/50 hover:bg-blue-50/20 group'
+          }`}
         >
           <input
             type="file"
             ref={fileInputRef}
+            disabled={processingFile}
             onChange={(e) => handleFileUpload(e.target.files?.[0])}
             accept=".xlsx,.xls,.csv"
             className="hidden"
           />
-          <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center text-blue-600 mb-3 group-hover:scale-110 transition">
-            <UploadCloud className="w-6 h-6" />
-          </div>
-          <p className="text-sm font-semibold text-slate-800">Haz clic para seleccionar o arrastra tu archivo aquí</p>
-          <p className="text-xs text-slate-500 mt-1">
-            Compatible tanto con libros de <strong>Excel (.xlsx / .xls)</strong> como archivos <strong>CSV (.csv)</strong>
-          </p>
-          <span className="mt-3 text-[11px] font-medium text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100">
-            Procesamiento 100% privado en tu navegador
-          </span>
+
+          {processingFile ? (
+            <div className="py-3 flex flex-col items-center space-y-3 animate-fade-in">
+              <div className="w-14 h-14 rounded-2xl bg-white shadow-md border border-blue-100 flex items-center justify-center text-blue-600">
+                <Loader2 className="w-7 h-7 animate-spin" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-800">
+                  {processingStatus || 'Procesando archivo...'}
+                </h4>
+                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                  Descomprimiendo celdas y extrayendo fotos del DNI incrustadas...
+                </p>
+              </div>
+              <div className="w-48 h-1.5 bg-blue-100 rounded-full overflow-hidden mt-2">
+                <div className="w-full h-full bg-blue-600 rounded-full animate-pulse"></div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center text-blue-600 mb-3 group-hover:scale-110 transition">
+                <UploadCloud className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-semibold text-slate-800">Haz clic para seleccionar o arrastra tu archivo aquí</p>
+              <p className="text-xs text-slate-500 mt-1">
+                Compatible con libros de <strong>Excel (.xlsx / .xls)</strong> y <strong>Google Sheets descargado como .xlsx</strong>
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
+                <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Extrae automáticamente fotos incrustadas en celdas (.xlsx)</span>
+                </span>
+                <span className="text-[11px] font-medium text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100">
+                  Procesamiento 100% privado en tu navegador
+                </span>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -273,6 +386,85 @@ export default function DataImport({ onDataLoaded, loading }) {
         <div className="mt-4 flex items-start gap-2.5 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs">
           <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
           <div className="flex-1 leading-relaxed">{errorMsg}</div>
+        </div>
+      )}
+
+      {/* Modal Selector de Hoja de Excel */}
+      {pendingWorkbook && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+            {/* Cabecera */}
+            <div className="p-5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm">
+                  <FileSpreadsheet className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Selecciona la Hoja a Procesar
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Archivo: <strong className="text-slate-700">{pendingWorkbook.sourceName}</strong> ({pendingWorkbook.sheetsInfo.length} hojas detectadas)
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setPendingWorkbook(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Lista de Hojas */}
+            <div className="p-5 max-h-[60vh] overflow-y-auto space-y-2.5">
+              <p className="text-xs text-slate-600 mb-3">
+                El libro contiene varias hojas. ¿Cuál de ellas deseas cargar para generar los Anexos?
+              </p>
+
+              {pendingWorkbook.sheetsInfo.map((s, idx) => (
+                <div
+                  key={idx}
+                  onClick={() => processSheet(pendingWorkbook.workbook, s.name, pendingWorkbook.sourceName, pendingWorkbook.extractedImages)}
+                  className="group flex items-center justify-between p-3.5 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/40 cursor-pointer transition shadow-2xs"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 group-hover:bg-blue-600 group-hover:text-white text-slate-600 flex items-center justify-center font-bold text-xs transition">
+                      {idx + 1}
+                    </div>
+                    <div>
+                      <div className="font-bold text-slate-900 text-xs group-hover:text-blue-700 transition">
+                        {s.name}
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        {s.rowCount > 0 ? `${s.rowCount} filas de datos detectadas` : 'Hoja sin filas detectadas'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="px-3 py-1.5 bg-white group-hover:bg-blue-600 text-slate-700 group-hover:text-white border border-slate-200 group-hover:border-blue-600 rounded-lg text-xs font-semibold flex items-center gap-1 transition shadow-2xs"
+                  >
+                    <span>Cargar hoja</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Pie */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setPendingWorkbook(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-200/60 transition"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
