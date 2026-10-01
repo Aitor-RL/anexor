@@ -1,0 +1,77 @@
+﻿export const sampleRows = [
+  // Vivienda 1: Piso -1, Pt: 01 (100% cuota - 2 propietarios)
+  {
+    "Comp": "X",
+    "Piso": "-1",
+    "Letra": "01",
+    "REFERENCIA CATASTRAL": "3664409NG2736S0001BB",
+    "DIRECCIÓN": "RU AREAL 78 Es:E Pl:-1 Pt:01",
+    "USO": "Almacén-Estacionamiento",
+    "SUP. CONSTRUIDA (m2)": 26,
+    "AÑO": 1977,
+    "% PROPIEDAD": 50,
+    "Propietario/a": "ELISA TORRÓN MARTÍNEZ",
+    "DNI": "33813570M",
+    "Mayor de 65?": "SI",
+    "Discapadidad >33%": "NO",
+    "Vulnerabilidad?": "NO",
+    "Beneficiario": "SI",
+    "Nota": ""
+  },
+  {
+    "Comp": "X",
+    "Piso": "-1",
+    "Letra": "01",
+    "REFERENCIA CATASTRAL": "3664409NG2736S0001BB",
+    "DIRECCIÓN": "RU AREAL 78 Es:E Pl:-1 Pt:01",
+    "USO": "Almacén-Estacionamiento",
+    "SUP. CONSTRUIDA (m2)": 26,
+    "AÑO": 1977,
+    "% PROPIEDAD": 50,
+    "Propietario/a": "MANUEL TORRÓN MARTÍNEZ",
+    "DNI": "33813571Y",
+    "Mayor de 65?": "NO",
+    "Discapadidad >33%": "NO",
+    "Vulnerabilidad?": "NO",
+    "Beneficiario": "SI",
+    "Nota": ""
+  },
+  // Vivienda 2: Piso 1, Pt: A (50% cuota - Falta propietario)
+  {
+    "Comp": "X",
+    "Piso": "1",
+    "Letra": "A",
+    "REFERENCIA CATASTRAL": "3664409NG2736S0002CC",
+    "DIRECCIÓN": "RU AREAL 78 Es:E Pl:01 Pt:A",
+    "USO": "Residencial",
+    "SUP. CONSTRUIDA (m2)": 85,
+    "AÑO": 1977,
+    "% PROPIEDAD": 50,
+    "Propietario/a": "CARMEN IGLESIAS GÓMEZ",
+    "DNI": "34912833F",
+    "Mayor de 65?": "NO",
+    "Discapadidad >33%": "NO",
+    "Vulnerabilidad?": "NO",
+    "Beneficiario": "SI",
+    "Nota": "Falta cónyuge"
+  },
+  // Vivienda 3: Piso 2, Pt: B (100% cuota - Vulnerabilidad)
+  {
+    "Comp": "X",
+    "Piso": "2",
+    "Letra": "B",
+    "REFERENCIA CATASTRAL": "3664409NG2736S0003DD",
+    "DIRECCIÓN": "RU AREAL 78 Es:E Pl:02 Pt:B",
+    "USO": "Residencial",
+    "SUP. CONSTRUIDA (m2)": 92,
+    "AÑO": 1977,
+    "% PROPIEDAD": 100,
+    "Propietario/a": "ALEJANDRO PÉREZ RODRÍGUEZ",
+    "DNI": "44029182A",
+    "Mayor de 65?": "SI",
+    "Discapadidad >33%": "SI",
+    "Vulnerabilidad?": "SI",
+    "Beneficiario": "SI",
+    "Nota": ""
+  }
+];
