@@ -10,7 +10,11 @@ async function getAnexo3TemplateBytes() {
   return cachedAnexo3Bytes;
 }
 
-export async function generateAnexo3Pdf(housings = [], communityData = {}, options = {}) {
+export async function generateAnexo3Pdf(housings = [], communityData = {}, options = {}, onProgress = null) {
+  if (onProgress) {
+    onProgress({ current: 0, total: 1, percentage: 10, statusText: 'Cargando plantilla oficial del Anexo III...' });
+  }
+
   const templateBytes = await getAnexo3TemplateBytes();
 
   // 1. Extraer lista plana de todos los comuneros para la Tabla (b)
@@ -106,6 +110,18 @@ export async function generateAnexo3Pdf(housings = [], communityData = {}, optio
   } = options;
 
   for (let setIdx = 0; setIdx < numSets; setIdx++) {
+    if (onProgress) {
+      const current = setIdx + 1;
+      const percentage = Math.round(15 + (setIdx / numSets) * 75);
+      onProgress({
+        current,
+        total: numSets,
+        percentage,
+        statusText: `Generando juego ${current} de ${numSets} (Págs. ${current * 2 - 1}-${current * 2})...`
+      });
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+
     const pageDoc = await PDFDocument.load(templateBytes.slice(0));
     const form = pageDoc.getForm();
 
@@ -266,6 +282,10 @@ export async function generateAnexo3Pdf(housings = [], communityData = {}, optio
     const tempDoc = await PDFDocument.load(savedBytes);
     const copiedPages = await masterDoc.copyPages(tempDoc, [0, 1]);
     copiedPages.forEach(p => masterDoc.addPage(p));
+  }
+
+  if (onProgress) {
+    onProgress({ current: numSets, total: numSets, percentage: 100, statusText: '¡Documento oficial completado!' });
   }
 
   return await masterDoc.save();

@@ -1,5 +1,5 @@
-﻿import React, { useState, useEffect } from 'react';
-import { Building2, UserCheck, FileText, Download, Eye, Save, Sparkles, CheckCircle2, AlertCircle, Users } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Building2, UserCheck, FileText, Download, Eye, Save, Sparkles, CheckCircle2, AlertCircle, Users, Loader2 } from 'lucide-react';
 import { generateAnexo3Pdf } from '../services/anexo3Service.js';
 
 export default function Anexo3Section({
@@ -35,8 +35,9 @@ export default function Anexo3Section({
     };
   });
 
-  const [savedSuccess, setSavedSuccess] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [generatingMode, setGeneratingMode] = useState(null); // 'preview' | 'download' | null
+  const [progress, setProgress] = useState(null); // { current, total, percentage, statusText }
 
   // Autoguardado en localStorage
   useEffect(() => {
@@ -55,8 +56,13 @@ export default function Anexo3Section({
 
   const handlePreview = async () => {
     setGenerating(true);
+    setGeneratingMode('preview');
+    setProgress({ current: 0, total: totalJuegosEstimados, percentage: 5, statusText: 'Preparando generación del Anexo III...' });
+
     try {
-      const pdfBytes = await generateAnexo3Pdf(housings, communityData, options);
+      const pdfBytes = await generateAnexo3Pdf(housings, communityData, options, (p) => {
+        setProgress(p);
+      });
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const filename = `Anexo_III_${(communityData.nombreComunidad || 'Comunidad').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
@@ -65,13 +71,20 @@ export default function Anexo3Section({
       alert('Error al generar vista previa del Anexo III: ' + err.message);
     } finally {
       setGenerating(false);
+      setGeneratingMode(null);
+      setProgress(null);
     }
   };
 
   const handleDownload = async () => {
     setGenerating(true);
+    setGeneratingMode('download');
+    setProgress({ current: 0, total: totalJuegosEstimados, percentage: 5, statusText: 'Iniciando generación y descarga...' });
+
     try {
-      const pdfBytes = await generateAnexo3Pdf(housings, communityData, options);
+      const pdfBytes = await generateAnexo3Pdf(housings, communityData, options, (p) => {
+        setProgress(p);
+      });
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -85,6 +98,8 @@ export default function Anexo3Section({
       alert('Error al descargar el Anexo III: ' + err.message);
     } finally {
       setGenerating(false);
+      setGeneratingMode(null);
+      setProgress(null);
     }
   };
 
@@ -166,16 +181,34 @@ export default function Anexo3Section({
               disabled={generating || housings.length === 0}
               className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 transition shadow-sm disabled:opacity-50"
             >
-              <Eye className="w-3.5 h-3.5 text-slate-500" />
-              <span>Previsualizar Anexo III</span>
+              {generating && generatingMode === 'preview' ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                  <span>Generando vista previa...</span>
+                </>
+              ) : (
+                <>
+                  <Eye className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Previsualizar Anexo III</span>
+                </>
+              )}
             </button>
             <button
               onClick={handleDownload}
               disabled={generating || housings.length === 0}
               className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition shadow-md shadow-indigo-500/20 disabled:opacity-50"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>Descargar Anexo III (PDF)</span>
+              {generating && generatingMode === 'download' ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                  <span>Descargando...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Descargar Anexo III (PDF)</span>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -373,6 +406,37 @@ export default function Anexo3Section({
           </div>
         </div>
       </div>
+
+      {/* Modal / Overlay de Progreso Animado */}
+      {generating && progress && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full border border-slate-100 flex flex-col items-center text-center space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
+              <Loader2 className="w-7 h-7 animate-spin" />
+            </div>
+
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">
+                {generatingMode === 'preview' ? 'Generando Vista Previa del Anexo III' : 'Generando Descarga del Anexo III'}
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">{progress.statusText}</p>
+            </div>
+
+            {/* Barra de progreso */}
+            <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden border border-slate-200">
+              <div
+                className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${progress.percentage || 10}%` }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between w-full text-[11px] font-medium text-slate-500 px-1">
+              <span>{progress.current > 0 ? `Juego ${progress.current} de ${progress.total}` : 'Iniciando...'}</span>
+              <span className="font-bold text-indigo-600">{progress.percentage}%</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
