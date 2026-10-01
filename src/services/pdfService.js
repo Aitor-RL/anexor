@@ -1,4 +1,4 @@
-﻿import { PDFDocument } from 'pdf-lib';
+import { PDFDocument } from 'pdf-lib';
 
 let cachedTemplateBytes = null;
 
@@ -71,6 +71,9 @@ export async function generateAnexoPdf(housing, options = {}) {
       }
       if (prop.dni && map.dni) {
         form.getTextField(map.dni).setText(prop.dni);
+      }
+      if (prop.esMenor && map.menor) {
+        try { form.getCheckBox(map.menor).check(); } catch (_) {}
       }
       if (prop.tutorNombre && map.tutorNombre) {
         form.getTextField(map.tutorNombre).setText(prop.tutorNombre);

@@ -1,4 +1,4 @@
-﻿export function normalizeKey(str) {
+export function normalizeKey(str) {
   return String(str || '')
     .trim()
     .toLowerCase()
@@ -38,14 +38,16 @@ export function parseRows(rawRows) {
 
     const nombre = String(row['propietarioa'] ?? row['propietario'] ?? row['nombre'] ?? '').trim();
     const dni = String(row['dni'] ?? row['nif'] ?? '').trim().toUpperCase();
+    const menorStr = String(row['menordeedad'] ?? row['menor'] ?? '').trim().toUpperCase();
+    const esMenor = menorStr === 'SI' || menorStr === 'SÍ' || menorStr === 'TRUE';
     const vulnerabilidadStr = String(row['vulnerabilidad'] ?? '').trim().toUpperCase();
     const vulnerabilidad = vulnerabilidadStr === 'SI' || vulnerabilidadStr === 'SÍ' || vulnerabilidadStr === 'TRUE';
     const mayor65Str = String(row['mayorde65'] ?? '').trim().toUpperCase();
     const mayor65 = mayor65Str === 'SI' || mayor65Str === 'SÍ';
     const discapacidadStr = String(row['discapadidad33'] ?? row['discapacidad33'] ?? '').trim().toUpperCase();
     const discapacidad = discapacidadStr === 'SI' || discapacidadStr === 'SÍ';
-    const tutorNombre = String(row['tutornombre'] ?? '').trim();
-    const tutorDni = String(row['tutordni'] ?? '').trim();
+    const tutorNombre = String(row['tutornombre'] ?? row['tutor'] ?? '').trim();
+    const tutorDni = String(row['tutordni'] ?? row['niftutor'] ?? '').trim().toUpperCase();
     const nota = String(row['nota'] ?? '').trim();
 
     if (!housingMap.has(housingKey)) {
@@ -68,6 +70,7 @@ export function parseRows(rawRows) {
         nombre,
         dni,
         porcentaje,
+        esMenor,
         vulnerabilidad,
         mayor65,
         discapacidad,
