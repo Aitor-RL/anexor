@@ -48,6 +48,18 @@ export function parseRows(rawRows) {
     const discapacidad = discapacidadStr === 'SI' || discapacidadStr === 'SÍ';
     const tutorNombre = String(row['tutornombre'] ?? row['tutor'] ?? '').trim();
     const tutorDni = String(row['tutordni'] ?? row['niftutor'] ?? '').trim().toUpperCase();
+    const anversoDni = String(
+      row['anversodni'] ??
+      row['dnianverso'] ??
+      row['anverso'] ??
+      row['fotodni'] ??
+      row['fotodnianverso'] ??
+      row['documentodni'] ??
+      row['linkdni'] ??
+      row['urldni'] ??
+      row['urldnianverso'] ??
+      ''
+    ).trim();
     const nota = String(row['nota'] ?? '').trim();
 
     if (!housingMap.has(housingKey)) {
@@ -76,6 +88,7 @@ export function parseRows(rawRows) {
         discapacidad,
         tutorNombre,
         tutorDni,
+        anversoDni,
         nota
       });
     }

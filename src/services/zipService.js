@@ -1,13 +1,13 @@
-﻿import JSZip from 'jszip';
+import JSZip from 'jszip';
 import { generateAnexoPdf } from './pdfService.js';
 
-export async function generateZipBundle(housings, options = {}) {
+export async function generateZipBundle(housings, options = {}, signaturesMap = {}) {
   const zip = new JSZip();
 
   for (let i = 0; i < housings.length; i++) {
     const housing = housings[i];
     try {
-      const pdfBytes = await generateAnexoPdf(housing, options);
+      const pdfBytes = await generateAnexoPdf(housing, options, signaturesMap);
       const fileName = (
         (i + 1).toString().padStart(2, '0') +
         '_Anexo_II_' +

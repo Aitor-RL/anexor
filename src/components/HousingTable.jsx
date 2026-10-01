@@ -1,9 +1,11 @@
-﻿import React from 'react';
-import { Eye, Download, CheckCircle2, AlertTriangle, XCircle, Home, UserCheck, HeartHandshake } from 'lucide-react';
+import React from 'react';
+import { Eye, Download, CheckCircle2, AlertTriangle, XCircle, Home, UserCheck, HeartHandshake, PenTool } from 'lucide-react';
 
 export default function HousingTable({
   housings,
   selectedIds,
+  signaturesMap = {},
+  onOpenSignatureModal,
   onToggleSelect,
   onSelectAll,
   onPreviewPdf,
@@ -40,7 +42,7 @@ export default function HousingTable({
             <tr>
               <th className="py-3 px-4 w-10"></th>
               <th className="py-3 px-4">Vivienda / Inmueble</th>
-              <th className="py-3 px-4">Propietarios</th>
+              <th className="py-3 px-4">Propietarios y Firmas DNI</th>
               <th className="py-3 px-4 text-center">Propiedad</th>
               <th className="py-3 px-4">Estado</th>
               <th className="py-3 px-4 text-right">Acciones</th>
@@ -50,7 +52,6 @@ export default function HousingTable({
             {housings.map((h) => {
               const isSelected = selectedIds.includes(h.id);
               const is100 = h.totalPropiedad === 100;
-              const hasVulnerable = h.propietarios.some(p => p.vulnerabilidad);
 
               return (
                 <tr
@@ -84,25 +85,57 @@ export default function HousingTable({
                     </div>
                   </td>
 
-                  {/* Propietarios */}
+                  {/* Propietarios y firmas */}
                   <td className="py-3.5 px-4">
-                    <div className="space-y-1">
-                      {h.propietarios.map((p, idx) => (
-                        <div key={idx} className="flex items-center gap-1.5 text-xs">
-                          <span className="font-medium text-slate-800">{p.nombre || 'Sin nombre'}</span>
-                          <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
-                            {p.dni || 'Sin DNI'}
-                          </span>
-                          <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-1 rounded">
-                            {p.porcentaje}%
-                          </span>
-                          {p.vulnerabilidad && (
-                            <span className="flex items-center gap-0.5 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
-                              <HeartHandshake className="w-3 h-3" /> Vulnerable
+                    <div className="space-y-1.5">
+                      {h.propietarios.map((p, idx) => {
+                        const cleanDni = String(p.dni || '').trim().toUpperCase();
+                        const hasSignature = cleanDni && Boolean(signaturesMap[cleanDni]);
+
+                        return (
+                          <div key={idx} className="flex flex-wrap items-center gap-1.5 text-xs py-0.5">
+                            <span className="font-medium text-slate-800">{p.nombre || 'Sin nombre'}</span>
+                            <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                              {p.dni || 'Sin DNI'}
                             </span>
-                          )}
-                        </div>
-                      ))}
+                            <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                              {p.porcentaje}%
+                            </span>
+                            {p.vulnerabilidad && (
+                              <span className="flex items-center gap-0.5 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                                <HeartHandshake className="w-3 h-3" /> Vulnerable
+                              </span>
+                            )}
+                            {p.dni && onOpenSignatureModal && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onOpenSignatureModal(p);
+                                }}
+                                title={hasSignature ? 'Firma DNI digitalizada y guardada. Clic para ver o cambiar' : 'Extraer y limpiar firma desde foto del DNI'}
+                                className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md border transition shadow-2xs ${
+                                  hasSignature
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400'
+                                    : 'bg-white text-slate-600 border-slate-300 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-400 border-dashed'
+                                }`}
+                              >
+                                {hasSignature ? (
+                                  <>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    <span>✍️ Firma lista</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <PenTool className="w-2.5 h-2.5 text-slate-400" />
+                                    <span>+ Firma DNI</span>
+                                  </>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </td>
 

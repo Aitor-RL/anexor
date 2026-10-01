@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from './components/Header.jsx';
 import DataImport from './components/DataImport.jsx';
 import HousingTable from './components/HousingTable.jsx';
 import Anexo3Section from './components/Anexo3Section.jsx';
 import PdfModal from './components/PdfModal.jsx';
-import { FileArchive, CheckCircle, AlertCircle, Building, Loader2, FileSpreadsheet, Building2, Layers } from 'lucide-react';
+import SignatureExtractorModal from './components/SignatureExtractorModal.jsx';
+import { FileArchive, CheckCircle, AlertCircle, Building, Loader2, FileSpreadsheet, Building2, Layers, PenTool } from 'lucide-react';
 import { parseRows } from './services/dataParser.js';
 import { generateAnexoPdf } from './services/pdfService.js';
 import { generateZipBundle } from './services/zipService.js';
+import { getAllSignaturesFromDb } from './services/signatureStore.js';
 
 export default function App() {
   const [housings, setHousings] = useState([]);
@@ -17,6 +19,30 @@ export default function App() {
   const [previewPdf, setPreviewPdf] = useState(null);
   const [sourceName, setSourceName] = useState('');
   const [activeTab, setActiveTab] = useState('anexo2'); // 'anexo2' | 'anexo3'
+
+  // Firmas digitalizadas persistentes por DNI { [DNI]: dataUrl }
+  const [signaturesMap, setSignaturesMap] = useState({});
+  const [currentSigningOwner, setCurrentSigningOwner] = useState(null);
+
+  // Cargar firmas existentes de IndexedDB al iniciar
+  useEffect(() => {
+    getAllSignaturesFromDb()
+      .then(sigs => setSignaturesMap(sigs || {}))
+      .catch(err => console.warn('No se pudieron cargar firmas de IndexedDB:', err));
+  }, []);
+
+  const handleSignatureSaved = (dni, dataUrl) => {
+    const cleanDni = String(dni || '').trim().toUpperCase();
+    setSignaturesMap(prev => {
+      const next = { ...prev };
+      if (dataUrl) {
+        next[cleanDni] = dataUrl;
+      } else {
+        delete next[cleanDni];
+      }
+      return next;
+    });
+  };
 
   // Configuración de firma
   const [options, setOptions] = useState({
@@ -53,11 +79,11 @@ export default function App() {
     }
   };
 
-  // Previsualizar PDF individual de Anexo II
+  // Previsualizar PDF individual de Anexo II con firmas estampadas
   const handlePreviewPdf = async (housing) => {
     setLoading(true);
     try {
-      const pdfBytes = await generateAnexoPdf(housing, options);
+      const pdfBytes = await generateAnexoPdf(housing, options, signaturesMap);
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const filename = 'Anexo_II_' + (housing.label || 'vivienda').replace(/[^a-zA-Z0-9_-]/g, '_') + '.pdf';
@@ -72,7 +98,7 @@ export default function App() {
   // Descarga directa individual
   const handleDownloadSinglePdf = async (housing) => {
     try {
-      const pdfBytes = await generateAnexoPdf(housing, options);
+      const pdfBytes = await generateAnexoPdf(housing, options, signaturesMap);
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -97,7 +123,7 @@ export default function App() {
 
     setGeneratingZip(true);
     try {
-      const zipBlob = await generateZipBundle(selectedHousings, options);
+      const zipBlob = await generateZipBundle(selectedHousings, options, signaturesMap);
       const url = URL.createObjectURL(zipBlob);
       const a = document.createElement('a');
       a.href = url;
@@ -206,6 +232,8 @@ export default function App() {
                 <HousingTable
                   housings={housings}
                   selectedIds={selectedIds}
+                  signaturesMap={signaturesMap}
+                  onOpenSignatureModal={(prop) => setCurrentSigningOwner(prop)}
                   onToggleSelect={handleToggleSelect}
                   onSelectAll={handleSelectAll}
                   onPreviewPdf={handlePreviewPdf}
@@ -269,6 +297,16 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal Extractor de Firma desde DNI */}
+      {currentSigningOwner && (
+        <SignatureExtractorModal
+          propietario={currentSigningOwner}
+          currentSignatureUrl={signaturesMap[String(currentSigningOwner.dni || '').trim().toUpperCase()]}
+          onClose={() => setCurrentSigningOwner(null)}
+          onSignatureSaved={handleSignatureSaved}
+        />
       )}
 
       {/* Modal de previsualización (compatible con Anexo II y Anexo III) */}
